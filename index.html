@@ -1,10 +1,33 @@
 <html>
 
+<head>
+  <style>
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+
 <body>
-  <button id="idPlayButton" onClick="play();">Play</button>
-  <audio id="idMusic" src='Tetris.ogg' loop></audio>
-  <canvas id='idCanvas' height='900px' width='900px'>
-  </canvas>
+  <button id='idPlayButton' onclick='play();'>Play</button>
+  <button id='idMusicVolume' onclick='toggleMusic();'>Turn Music Off</button>
+  <div class='canvas-container'>
+    <canvas id='idCanvas' height='650px' width='600px'></canvas>
+  </div>
+  <audio id='idMusic' src='music.ogg' loop></audio>
+  <audio id='idSoundGameOver' src='gameover.ogg'></audio>
+  <audio id='idSoundMove0' src='move.ogg'></audio>
+  <audio id='idSoundMove1' src='move.ogg'></audio>
+  <audio id='idSoundMove2' src='move.ogg'></audio>
+  <audio id='idSoundMove3' src='move.ogg'></audio>
+  <audio id='idSoundMove4' src='move.ogg'></audio>
+  <audio id='idSoundMove5' src='move.ogg'></audio>
+  <audio id='idSoundMove6' src='move.ogg'></audio>
+  <audio id='idSoundMove7' src='move.ogg'></audio>
+  <audio id='idSoundMove8' src='move.ogg'></audio>
+  <audio id='idSoundMove9' src='move.ogg'></audio>
+  <audio id='idSoundSuccess' src='success.ogg'></audio>
 
   <script>
     const CUBE_SIZE = 30;
@@ -22,13 +45,10 @@
     }
 
     function gameOver() {
-      clearInterval(intervalHandler);
-      intervalHandler = null;
-      console.log('game over');
-    }
-
-    function updateScore(linesCleared) {
-      
+      isGameOver = true;
+      playSound(SoundTypes.GameOver);
+      soundElements.music.pause();
+      localStorage.setItem('high-score', score);
     }
 
     function hasCollisions(space, newElement) {
@@ -72,6 +92,38 @@
         ctx.moveTo(0, (i + 1) * CUBE_SIZE);
       }
 
+      ctx.fillStyle = 'black';
+      ctx.font = '30px Arial';
+
+      ctx.moveTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 2 * CUBE_SIZE);
+
+      ctx.lineTo((WIDTH_IN_CUBES + 7) * CUBE_SIZE, 2 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 7) * CUBE_SIZE, 4 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 4 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 2 * CUBE_SIZE);
+      ctx.fillText('SCORE', (WIDTH_IN_CUBES + 2) * CUBE_SIZE + 20, CUBE_SIZE + 10)
+      ctx.fillText(`${score}`.padStart(8, '0'), (WIDTH_IN_CUBES + 2) * CUBE_SIZE + 10, 3 * CUBE_SIZE + 10);
+
+
+      ctx.moveTo((WIDTH_IN_CUBES + 3) * CUBE_SIZE, 6 * CUBE_SIZE);
+
+      ctx.lineTo((WIDTH_IN_CUBES + 6) * CUBE_SIZE, 6 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 6) * CUBE_SIZE, 8 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 3) * CUBE_SIZE, 8 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 3) * CUBE_SIZE, 6 * CUBE_SIZE);
+      ctx.fillText('LEVEL', (WIDTH_IN_CUBES + 2) * CUBE_SIZE + 30, 5 * CUBE_SIZE + 10)
+      ctx.fillText(`${level}`.padStart(3, '0'), (WIDTH_IN_CUBES + 3) * CUBE_SIZE + 20, 7 * CUBE_SIZE + 10);
+
+      ctx.moveTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 10 * CUBE_SIZE);
+
+      ctx.lineTo((WIDTH_IN_CUBES + 7) * CUBE_SIZE, 10 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 7) * CUBE_SIZE, 12 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 12 * CUBE_SIZE);
+      ctx.lineTo((WIDTH_IN_CUBES + 2) * CUBE_SIZE, 10 * CUBE_SIZE);
+      ctx.fillText('HIGH SCORE', (WIDTH_IN_CUBES + 1) * CUBE_SIZE + 20, 9 * CUBE_SIZE + 10)
+      ctx.fillText(`${highScore}`.padStart(8, '0'), (WIDTH_IN_CUBES + 2) * CUBE_SIZE + 10, 11 * CUBE_SIZE + 10);
+
+
       ctx.stroke();
     }
 
@@ -105,23 +157,52 @@
     }
 
     function clearFullLines(space) {
-      const clearedLines = [];
+      let clearedLines = [];
       for (const [y, line] of Object.entries(space)) {
         if (line.length === WIDTH_IN_CUBES) {
-          space[y] = [];
           clearedLines.push(y);
         }
       }
 
-      if (clearedLines.length) {
-        clearedLines.reverse();
+      if (!clearedLines.length) {
+        return;
+      }
 
-        for (const y of clearedLines) {
-          for (let i = y; i >= 0; i -= CUBE_SIZE) {
-            space[i] = space[i - CUBE_SIZE] || [];
-          }
+      playSound(SoundTypes.Success);
+      addScoreByClearedLines(clearedLines.length);
+      clearedLines = clearedLines.sort((a, b) => b - a).map(x => Number(x));
+      for (let j = 0; j < clearedLines.length; j++) {
+        const offset = j * CUBE_SIZE;
+        const currentLine = clearedLines[j] + offset;
+        space[currentLine] = [];
+        for (let i = currentLine; i >= 0; i -= CUBE_SIZE) {
+          space[i] = space[i - CUBE_SIZE] || [];
         }
       }
+    }
+
+    function getLevel(clearedLines) {
+      let level = 0;
+
+      do {
+        level += 1;
+        clearedLines -= (10 + level * 5);
+      } while (clearedLines >= 0);
+
+      return level;
+    }
+
+    function addScoreByClearedLines(newlyClearedLines) {
+      const scoreMultiplierMap = {
+        1: 100,
+        2: 300,
+        3: 500,
+        4: 800,
+      };
+
+      score += scoreMultiplierMap[newlyClearedLines] * level;
+      clearedLines += newlyClearedLines;
+      level = getLevel(clearedLines);
     }
 
     function moveElementDown(space) {
@@ -141,10 +222,12 @@
       }
 
       currentElement = newElement;
+
       return true;
     }
 
     function moveElementBottom(space, currentElement) {
+      playSound(SoundTypes.Move);
       while (moveElementDown(space, currentElement));
     }
 
@@ -160,6 +243,8 @@
       if (!hasCollisions(space, newElement)) {
         currentElement = newElement;
       }
+
+      playSound(SoundTypes.Move);
 
       return true;
     }
@@ -272,22 +357,50 @@
     ];
 
     const space = generateSpace(HEIGHT_IN_CUBES);
+
     let canvas;
     let ctx;
     let currentElement;
-    let intervalHandler;
+    let nextElement;
+    let isGameOver = true;
+    let time;
     let score = 0;
+    let highScore = localStorage.getItem('high-score') || 0;
     let level = 1;
+    let clearedLines = 0;
+    const soundElements = {
+      gameOver: undefined,
+      music: undefined,
+      move: [],
+      success: undefined,
+    };
 
-    window.onload = function() {
+    // if user presses keys too quickly, only one sound is played
+    // that's why you need to have multiple audio elements and iterate between them
+    let currentMoveSound = 0;
+    let isMuted = false;
+    const SoundTypes = {
+      GameOver: Symbol('SoundTypeGameOver'),
+      Move: Symbol('SoundTypeMove'),
+      Music: Symbol('SoundTypeMusic'),
+      Success: Symbol('SoundTypeSuccess'),
+    }
+
+    window.onload = function () {
       currentElement = generateNewElement();
       canvas = document.getElementById('idCanvas');
       ctx = canvas.getContext('2d');
 
+      soundElements.music = document.getElementById('idMusic');
+      soundElements.music.volume = 0.1;
+      soundElements.gameOver = document.getElementById('idSoundGameOver');
+      soundElements.success = document.getElementById('idSoundSuccess');
+      soundElements.move = Array.from(Array(10).keys()).map(n => document.getElementById(`idSoundMove${n}`));
+
       document.onkeyup = ({ key }) => {
-        if (!intervalHandler) {
+        if (isGameOver) {
           return;
-        }  
+        }
 
         if (key === 'ArrowUp') {
           setNewElement(space, { ...currentElement, rotation: (currentElement.rotation + 90) % 360 });
@@ -299,8 +412,6 @@
           moveElementDown(space, currentElement);
         } else if (key === ' ') {
           moveElementBottom(space, currentElement);
-        } else {
-          console.log(key)
         }
 
         render(space, currentElement, canvas, ctx);
@@ -308,12 +419,70 @@
     }
 
     function play() {
+      isGameOver = false;
       document.getElementById('idPlayButton').remove();
-      document.getElementById('idMusic').play();
-      intervalHandler = setInterval(function () {
-        moveElementDown(space, currentElement);
-        render(space, currentElement, canvas, ctx);
-      }, 1000);
+      playSound(SoundTypes.Music);
+      time = performance.now();
+      requestAnimationFrame(start);
+    }
+
+    function toggleMusic() {
+      if (isGameOver) {
+        return;
+      }
+
+      isMuted = !isMuted;
+
+      document.getElementById('idMusicVolume').innerText = isMuted ? 'Turn Music On' : 'Turn Music Off';
+
+      if (isMuted) {
+        soundElements.music.pause();
+      } else {
+        playSound(SoundTypes.Music);
+      }
+    }
+
+    function playSound(type) {
+      if (isMuted) {
+        return;
+      }
+
+      switch (type) {
+        case SoundTypes.GameOver:
+          soundElements.gameOver.play();
+          break;
+
+        case SoundTypes.Success:
+          soundElements.success.play();
+          break;
+
+        case SoundTypes.Music:
+          soundElements.music.play();
+          break;
+
+        case SoundTypes.Move:
+          soundElements.move[currentMoveSound].play();
+          currentMoveSound = (currentMoveSound + 1) % 10;
+          break;
+
+        default:
+          console.log(`unknown sound ${type}`);
+      }
+    }
+
+    function start(t) {
+      if (isGameOver) {
+        return;
+      }
+
+      if (t < (time + (1000 / level))) {
+        return requestAnimationFrame(start);
+      }
+
+      moveElementDown(space, currentElement);
+      render(space, currentElement, canvas, ctx);
+      time = performance.now();
+      requestAnimationFrame(start);
     }
   </script>
 </body>
